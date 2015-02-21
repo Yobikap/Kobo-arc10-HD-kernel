@@ -1,0 +1,197 @@
+Kernel input device drivers yas530_input.c, ak89xx_input.c
+Author: Invensense <http://invensense.com>
+
+Description
+-----------
+This document describes how to install the Invensense device driver into a
+Linux kernel. At the moment, the drivers support YAS530 and AK8975. 
+The I2C address must be specified in the corresponding board file.
+
+Files included in this package:
+yas530_input.c ak89xx_input.c
+use create-link-in-kernel.sh to create link file to your system. You have to 
+modify the path to make it point to the path of your system.
+Including the driver in the Linux kernel
+----------------------------------------
+The file listed should be added to the drivers/input/misc directory (or another
+directory of your choosing). When building the kernel, the driver will not 
+appear in menuconfig without modifications similar to those below:
+
+drivers/input/misc/Kconfig
+#
+# inv-yas530 compass input device driver and AKM ak89xx input device drivers
+#
+
+config INV_YAS530
+    tristate "Invensense Yamaha YAS530 compass input device driver"
+    depends on I2C && SYSFS && INPUT && INPUT_EVDEV
+    default n
+    help
+      This driver supports the Yamaha YAS530 compass device .
+      This driver can be built as a module. The module will be called
+      inv-yas530.
+
+config INV_AK89XX
+    tristate "Invensense AKM AK89xx compass input device driver"
+    depends on I2C && SYSFS && INPUT && INPUT_EVDEV
+    default n
+    help
+      This driver supports the AKM AK8975/AK8972/AK8963 compass devices.
+      This driver can be built as a module. The module will be called
+      inv-ak89xx.
+
+drivers/input/misc/Makefile
+#
+# Makefile for inv-yas530 compass input device and ak89xx input devices
+#
+obj-$(CONFIG_INV_YAS530) += inv-yas530.o
+inv-yas530-objs += yas530_input.o
+
+obj-$(CONFIG_INV_AK8975) += inv-ak89xx.o
+inv-ak89xx-objs += ak89xx_input.o
+
+the include file "core/driver/include/linux/mpu.h" should be copied to 
+"kernel/include/linux/".
+
+Board and Platform Data
+-----------------------
+The board file needs to be modified to register the device on an I2C bus. An
+i2c_board_info instance must be defined as seen below. 
+--------------------------------------------------------------------
+for yas530
+static struct mpu_platform_data compass_platform_data = {
+	.orientation = { 1, 0, 0,
+			 0, 1, 0,
+			 0, 0, 1 },
+};
+
+static struct i2c_board_info __initdata dual_chip_board_info[] = {
+	{
+		I2C_BOARD_INFO("yas530", 0x18),
+		.platform_data = &compass_platform_data,
+	},
+};
+--------------------------------------------------------------------
+for ak8975
+static struct mpu_platform_data compass_platform_data = {
+        .orientation = { 1, 0, 0,
+                         0, 1, 0,
+                         0, 0, 1 },
+};
+
+static struct i2c_board_info __initdata dual_chip_board_info[] = {
+        {
+                I2C_BOARD_INFO("ak8975", 0x0E),
+                .platform_data = &compass_platform_data,
+        },
+};
+--------------------------------------------------------------------
+for ak8972
+static struct mpu_platform_data compass_platform_data = {
+        .orientation = { 1, 0, 0,
+                         0, 1, 0,
+                         0, 0, 1 },
+};
+
+static struct i2c_board_info __initdata dual_chip_board_info[] = {
+        {
+                I2C_BOARD_INFO("ak8972", 0x0E),
+                .platform_data = &compass_platform_data,
+        },
+};
+--------------------------------------------------------------------
+for ak8963
+static struct mpu_platform_data compass_platform_data = {
+        .orientation = { 1, 0, 0,
+                         0, 1, 0,
+                         0, 0, 1 },
+};
+
+static struct i2c_board_info __initdata dual_chip_board_info[] = {
+        {
+                I2C_BOARD_INFO("ak8963", 0x0E),
+                .platform_data = &compass_platform_data,
+        },
+};
+
+------------------------------------------------------------------------------
+In the _i2c_init function, the device is registered in the following manner:
+
+arch/arm/mach-omap2/board-omap4panda.c
+    in static int __init omap4_panda_i2c_init(void)
+omap_register_i2c_bus(4, 400, 
+                      dual_chip_board_info, ARRAY_SIZE(dual_chip_board_info));
+
+Input subsystem
+----------------------------------------------
+Input subsystem is used in Linux for those devices that handles input-only
+functions.
+It provides a event file located in /dev/input/ directory. To identify which 
+input corresponding to which event. Read or cat file "/proc/bus/input/devices".
+You will see a list of all the input devices installed in the system and their
+name. 
+In the following description, "eventX" means event0, or event1 or a
+corresponding event file.
+
+Communicating with the driver in userspace
+------------------------------------------
+
+for yas530 driver
+Upon installation, the driver generates several files in sysfs. The input 
+device name would be "INV_YAS530". If your platform is configured as detailed
+above, navigate to the following path to find these files:
+/sys/class/input/inputX/yas530/
+
+The list below provides a brief description for each file.
+----------------------------------------------------------
+rate (read/write)
+set and read the date reading rate.
+The minimum is 10Hz (100 ms delay) while the maximum is 100Hz (10 ms delay).
+
+enable (Read/write)
+master enable, enable this would output data through input event handler.
+
+reset (read only)
+reading this entry will reset the chip. This should happen when the chip 
+output abnomal values consistently. The success of reset return 0.
+
+scale (read only)
+output scale of compass
+
+value (read only)
+output x, y, z of compass data
+
+compass_matrix (read only)
+output orientation matrix
+
+-----------------------------------------------
+for ak89xx
+Upon installation, the driver generates several files in sysfs. 
+The input device name would be "INV_AK89XX". If your platform is configured as
+detailed above, navigate to the following path to find these files:
+/sys/class/input/inputX/ak89xx/
+
+The list below provides a brief description for each file.
+----------------------------------------------------------
+rate (read/write)
+set and read the date reading rate.
+The minimum is 10Hz (100 ms delay) while the maximum is 100Hz (10 ms delay).
+
+enable (Read/write)
+master enable, enable this would output data through input event handler.
+
+reset (read only)
+reading this entry will reset the chip. 
+This should happen when the chip output abnormal values consistently. 
+reset returns 0 when successful or a negative number on failure.
+
+scale (read only)
+output scale of compass
+
+value (read only)
+output x, y, z of compass data
+
+compass_matrix (read only)
+output orientation matrix
+
+
