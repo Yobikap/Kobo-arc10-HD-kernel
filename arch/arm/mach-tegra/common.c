@@ -103,7 +103,7 @@
 #define   ADDR_BNDRY(x)	(((x) & 0xf) << 21)
 #define   INACTIVITY_TIMEOUT(x)	(((x) & 0xffff) << 0)
 
-#define DORA_KERNEL_VERSION		"K04.23.20131028"
+#define DORA_KERNEL_VERSION		"K04.24.20131112"
 #define DORA_MANUFACTURER		"Wistron"
 
 unsigned long tegra_avp_kernel_start;
