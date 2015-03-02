@@ -38,6 +38,9 @@
 #include <linux/spinlock.h>
 
 #include "inv_gyro.h"
+
+extern s64 get_time_ns(void);
+
 int set_3050_bypass(struct inv_gyro_state_s *st, int enable)
 {
 	struct inv_reg_map_s *reg;
